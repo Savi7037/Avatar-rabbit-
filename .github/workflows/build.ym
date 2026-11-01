@@ -1,0 +1,65 @@
+name: Build Avatar Rabbit
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "project.zip"
+      - ".github/workflows/build.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unpack project
+        run: |
+          mkdir work
+          unzip -q project.zip -d work
+
+      - name: Install Blender
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y blender
+          blender --version | head -1
+
+      - name: Render rabbit sprites
+        working-directory: work
+        run: |
+          mkdir -p app/src/main/assets/sprites
+          blender -b -P tools/render_sprites.py -- bunny.glb app/src/main/assets/sprites
+          count=$(ls app/src/main/assets/sprites/*.png | wc -l)
+          echo "rendered $count frames"
+          [ "$count" -ge 40 ]
+
+      - name: Save sprite preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: sprites-preview
+          path: work/app/src/main/assets/sprites
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android platform
+        run: sdkmanager --install "platforms;android-34" "build-tools;34.0.0"
+
+      - uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: "8.5"
+
+      - name: Build APK
+        working-directory: work
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Save APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AvatarRabbit-APK
+          path: work/app/build/outputs/apk/debug/app-debug.apk
