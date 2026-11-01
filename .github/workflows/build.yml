@@ -21,9 +21,17 @@ jobs:
 
       - name: Install Blender
         run: |
+          set -e
+          for v in 4.2.3 4.2.2 4.2.1; do
+            url="https://download.blender.org/release/Blender4.2/blender-$v-linux-x64.tar.xz"
+            if curl -fsSL -o blender.tar.xz "$url"; then echo "downloaded $v"; break; fi
+          done
+          mkdir -p "$HOME/blender"
+          tar -xf blender.tar.xz -C "$HOME/blender" --strip-components=1
           sudo apt-get update
-          sudo apt-get install -y blender
-          blender --version | head -1
+          sudo apt-get install -y libxi6 libxxf86vm1 libxfixes3 libxrender1 libgl1 libsm6 libxkbcommon0 libegl1
+          echo "$HOME/blender" >> "$GITHUB_PATH"
+          "$HOME/blender/blender" --version | head -1
 
       - name: Render rabbit sprites
         working-directory: work
